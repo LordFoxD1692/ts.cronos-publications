@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Arquitectura Clean Architecture – Módulo Producto (Costo Bienes)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+
+  h1 { text-align: center; font-size: 1.4rem; color: #7dd3fc; margin-bottom: 6px; letter-spacing: 0.5px; }
+  .subtitle { text-align: center; font-size: 0.82rem; color: #64748b; margin-bottom: 24px; }
+
+  .flow { display: flex; align-items: stretch; gap: 0; justify-content: center; }
+
+  /* Arrow between layers */
+  .arrow {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 36px; flex-shrink: 0; gap: 6px;
+  }
+  .arrow-line { width: 2px; flex: 1; background: #334155; min-height: 20px; }
+  .arrow-head { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 10px solid #334155; }
+  .arrow-label { font-size: 0.6rem; color: #475569; text-align: center; writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Layer card */
+  .layer {
+    width: 210px; border-radius: 12px; overflow: hidden;
+    border: 1px solid; display: flex; flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: default;
+  }
+  .layer:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+
+  .layer-header {
+    padding: 10px 14px; font-weight: 700; font-size: 0.78rem;
+    letter-spacing: 0.8px; text-transform: uppercase; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .layer-icon { font-size: 1.6rem; }
+  .layer-body { padding: 12px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+  .file-card {
+    border-radius: 7px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.07);
+    transition: background 0.15s; cursor: pointer; position: relative;
+  }
+  .file-card:hover .tooltip { display: block; }
+  .file-name { font-size: 0.72rem; font-weight: 600; margin-bottom: 3px; }
+  .file-path { font-size: 0.6rem; opacity: 0.55; }
+  .file-desc { font-size: 0.65rem; margin-top: 4px; line-height: 1.4; opacity: 0.8; }
+
+  /* Tooltip */
+  .tooltip {
+    display: none; position: absolute; left: 105%; top: 0; z-index: 100;
+    background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+    padding: 10px; width: 220px; font-size: 0.68rem; line-height: 1.5;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .tooltip strong { color: #7dd3fc; display: block; margin-bottom: 4px; }
+  .tooltip code { background: #0f172a; padding: 1px 4px; border-radius: 3px; font-size: 0.65rem; color: #a5f3fc; }
+
+  /* Layer colors */
+  .domain   { border-color: #7c3aed; background: linear-gradient(160deg, #1e1040 0%, #130d2e 100%); }
+  .domain   .layer-header { background: #6d28d9; color: #ede9fe; }
+  .domain   .file-card { background: rgba(109,40,217,0.12); }
+  .domain   .file-name { color: #c4b5fd; }
+
+  .application { border-color: #0284c7; background: linear-gradient(160deg, #0c1f30 0%, #071523 100%); }
+  .application .layer-header { background: #0369a1; color: #e0f2fe; }
+  .application .file-card { background: rgba(3,105,161,0.12); }
+  .application .file-name { color: #7dd3fc; }
+
+  .infrastructure { border-color: #0f766e; background: linear-gradient(160deg, #0a2520 0%, #061815 100%); }
+  .infrastructure .layer-header { background: #0f766e; color: #ccfbf1; }
+  .infrastructure .file-card { background: rgba(15,118,110,0.12); }
+  .infrastructure .file-name { color: #5eead4; }
+
+  .api      { border-color: #b45309; background: linear-gradient(160deg, #1f1509 0%, #140e04 100%); }
+  .api      .layer-header { background: #b45309; color: #fef3c7; }
+  .api      .file-card { background: rgba(180,83,9,0.12); }
+  .api      .file-name { color: #fbbf24; }
+
+  .web      { border-color: #be185d; background: linear-gradient(160deg, #2a0a1a 0%, #1a0510 100%); }
+  .web      .layer-header { background: #be185d; color: #fce7f3; }
+  .web      .file-card { background: rgba(190,24,93,0.12); }
+  .web      .file-name { color: #f9a8d4; }
+
+  /* Sub-groups inside Application */
+  .group-label { font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; }
+
+  /* DB table at bottom */
+  .db-section { margin-top: 28px; display: flex; justify-content: center; flex-direction: column; align-items: center; gap: 10px; }
+  .db-box {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid #334155; border-radius: 10px; padding: 14px 24px;
+    display: inline-block; text-align: center;
+  }
+  .db-title { font-size: 0.75rem; color: #94a3b8; margin-bottom: 8px; letter-spacing: 0.5px; }
+  .db-name { font-size: 1rem; font-weight: 700; color: #22d3ee; font-family: 'Consolas', monospace; }
+  .db-cols { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+  .db-col { font-size: 0.65rem; background: #1e293b; border: 1px solid #334155; border-radius: 5px; padding: 3px 8px; color: #94a3b8; }
+  .db-col.pk { border-color: #fbbf24; color: #fbbf24; }
+  .db-col.req { border-color: #5eead4; color: #5eead4; }
+  .db-col.opt { border-color: #6b7280; color: #6b7280; }
+
+  .legend { display: flex; gap: 12px; margin-top: 8px; }
+  .leg-item { display: flex; align-items: center; gap: 4px; font-size: 0.62rem; color: #64748b; }
+  .leg-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  .dep-note { text-align: center; font-size: 0.7rem; color: #475569; margin-top: 16px; padding: 8px 20px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid #1e293b; max-width: 900px; }
+  .dep-note span { color: #7dd3fc; font-weight: 600; }
+
+  /* Responsive scroll */
+  .scroll-wrap { overflow-x: auto; padding-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<h1>🏗️ Clean Architecture — Módulo Producto (Costo Bienes)</h1>
+<p class="subtitle">TS.Cronos OT · Basado en el patrón TipoPrestacion · Hover sobre cada archivo para ver el detalle</p>
+
+<div class="scroll-wrap">
+<div class="flow">
+
+  <!-- DOMAIN -->
+  <div class="layer domain">
+    <div class="layer-header">
+      <span class="layer-icon">🏛️</span>
+      Domain
+      <span style="font-size:0.6rem;opacity:0.7">TS.Cronos.OT.Domain</span>
+    </div>
+    <div class="layer-body">
+      <div class="file-card">
+        <div class="file-name">Producto.cs</div>
+        <div class="file-path">…/CostoBienes/Entities/</div>
+        <div class="file-desc">La entidad principal. Hereda de <code>AuditableEntity</code>. Define las propiedades y las reglas del negocio.</div>
+        <div class="tooltip">
+          <strong>📦 Producto.cs — Entidad de dominio</strong>
+          Propiedades: <code>Id</code>, <code>Nombre</code>, <code>CodigoSap</code>, <code>Costo?</code>, <code>Unidad</code>, <code>Categoria</code>, <code>Activo</code><br><br>
+          Métodos de dominio:<br>
+          • <code>Actualizar(…)</code> — cambia datos<br>
+          • <code>CambiarEstado()</code> — toggle Activo<br>
+          • <code>MarcarEliminado()</code> — soft delete<br><br>
+          ⚠️ Las propiedades son <code>private set</code>. Solo el objeto mismo puede cambiar su estado.
+        </div>
+      </div>
+      <div style="font-size:0.65rem; color:#a78bfa; text-align:center; padding:4px 0; opacity:0.7">
+        ↑ Hereda AuditableEntity<br>
+        <span style="font-size:0.6rem;color:#64748b">(TenantId, CreadoEn, etc.)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARROW 1 -->
+  <div class="arrow">
+    <div class="arrow-line"></div>
+    <div class="arrow-label">usa</div>
+    <div class="arrow-head"></div>
+  </div>
+
+  <!-- APPLICATION -->
+  <div class="layer application">
+    <div class="layer-header">
+      <span class="layer-icon">⚙️</span>
+      Application
+      <span style="font-size:0.6rem;opacity:0.7">TS.Cronos.OT.Application</span>
+    </div>
+    <div class="layer-body">
+      <div class="group-label" style="margin-top:0; border-top: none;">📄 DTOs</div>
+      <div class="file-card">
+        <div class="file-name">ProductoDto.cs</div>
+        <div class="file-path">…/CostoBienes/Productos/DTOs/</div>
+        <div class="file-desc">Datos de respuesta (GET)</div>
+        <div class="tooltip">
+          <strong>📄 ProductoDto.cs — Salida</strong>
+          Lo que el API devuelve al cliente:<br>
+          <code>Id</code>, <code>Nombre</code>, <code>CodigoSap</code>, <code>Costo</code>, <code>Unidad</code>, <code>Categoria</code>, <code>Activo</code><br><br>
+          No expone campos de auditoría. Es un "espejo limpio" de la entidad para el frontend.
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">CreateProductoDto.cs</div>
+        <div class="file-path">…/CostoBienes/Productos/DTOs/</div>
+        <div class="file-desc">Datos de entrada (POST)</div>
+        <div class="tooltip">
+          <strong>📄 CreateProductoDto.cs — Entrada POST</strong>
+          Lo que el cliente manda al crear:<br>
+          <code>Nombre</code>, <code>CodigoSap</code>, <code>Costo?</code>, <code>Unidad</code>, <code>Categoria</code><br><br>
+          Sin <code>Id</code> ni <code>Activo</code> — la entidad los genera sola.
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">UpdateProductoDto.cs</div>
+        <div class="file-path">…/CostoBienes/Productos/DTOs/</div>
+        <div class="file-desc">Datos de entrada (PUT)</div>
+        <div class="tooltip">
+          <strong>📄 UpdateProductoDto.cs — Entrada PUT</strong>
+          Igual que el Create pero para edición. El <code>Id</code> va en la URL, no en el body.
+        </div>
+      </div>
+
+      <div class="group-label">🔌 Interface</div>
+      <div class="file-card">
+        <div class="file-name">IProductoRepository.cs</div>
+        <div class="file-path">…/Interfaces/Repositories/</div>
+        <div class="file-desc">Contrato que define qué operaciones BD existen</div>
+        <div class="tooltip">
+          <strong>🔌 IProductoRepository.cs — Contrato</strong>
+          Métodos declarados:<br>
+          <code>GetAllAsync(tenantId)</code><br>
+          <code>GetByIdAsync(id, tenantId)</code><br>
+          <code>AddAsync(entity)</code><br>
+          <code>UpdateAsync(entity)</code><br>
+          <code>ExisteCodigoSapAsync(cod, tenantId, excludeId?)</code><br><br>
+          Application solo conoce esta <em>interfaz</em>, jamás la clase concreta. Esto es la Inversión de Dependencias (DI).
+        </div>
+      </div>
+
+      <div class="group-label">🎯 Use Cases</div>
+      <div class="file-card">
+        <div class="file-name">CrearProductoUseCase.cs</div>
+        <div class="file-path">…/UseCases/</div>
+        <div class="file-desc">Lógica para crear un producto</div>
+        <div class="tooltip">
+          <strong>🎯 CrearProductoUseCase.cs</strong>
+          Pasos que ejecuta:<br>
+          1. Valida que <code>CodigoSap</code> no exista ya<br>
+          2. Crea instancia de <code>Producto(…)</code><br>
+          3. Llama <code>EstablecerTenant</code> y <code>EstablecerCreador</code><br>
+          4. Llama <code>repo.AddAsync(entity)</code><br>
+          5. Devuelve <code>Result&lt;int&gt;.Success(id)</code><br><br>
+          Usa primary constructor: <code>CrearProductoUseCase(IProductoRepository repo)</code>
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">ListarProductoUseCase.cs</div>
+        <div class="file-path">…/UseCases/</div>
+        <div class="file-desc">Obtiene lista paginada/filtrada</div>
+        <div class="tooltip">
+          <strong>🎯 ListarProductoUseCase.cs</strong>
+          Llama <code>repo.GetAllAsync(tenantId)</code>, mapea entidades a <code>ProductoDto</code> y devuelve <code>Result&lt;List&lt;ProductoDto&gt;&gt;</code>.
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">+ Editar / Desactivar / Eliminar</div>
+        <div class="file-path">…/UseCases/</div>
+        <div class="file-desc">Un UseCase por cada acción de negocio</div>
+        <div class="tooltip">
+          <strong>Regla del patrón:</strong><br>
+          • <code>EditarProductoUseCase</code> → PUT completo<br>
+          • <code>DesactivarProductoUseCase</code> → PATCH <code>/estado</code>, llama <code>CambiarEstado()</code><br>
+          • <code>EliminarProductoUseCase</code> → DELETE, llama <code>MarcarEliminado()</code><br><br>
+          Desactivar = sigue visible en lista (inactivo)<br>
+          Eliminar = desaparece de la lista (soft delete)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARROW 2 -->
+  <div class="arrow">
+    <div class="arrow-line"></div>
+    <div class="arrow-label">implementa</div>
+    <div class="arrow-head"></div>
+  </div>
+
+  <!-- INFRASTRUCTURE -->
+  <div class="layer infrastructure">
+    <div class="layer-header">
+      <span class="layer-icon">🗄️</span>
+      Infrastructure
+      <span style="font-size:0.6rem;opacity:0.7">TS.Cronos.OT.Infrastructure</span>
+    </div>
+    <div class="layer-body">
+      <div class="file-card">
+        <div class="file-name">ProductoRepository.cs</div>
+        <div class="file-path">…/Infrastructure/CostoBienes/</div>
+        <div class="file-desc">Implementa <code>IProductoRepository</code>. Usa EF Core + MariaDB.</div>
+        <div class="tooltip">
+          <strong>🗄️ ProductoRepository.cs</strong>
+          Constructor clásico (con <code>private readonly OtDbContext _context</code>).<br><br>
+          Implementa todos los métodos de la interface usando LINQ + EF Core.<br><br>
+          <code>GetAllAsync</code>: QueryFilter de tenant se aplica automáticamente. No pasa <code>tenantId</code> al query.<br><br>
+          <code>AddAsync</code>: agrega, hace <code>SaveChangesAsync()</code>, devuelve <code>entity.Id</code>.
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">OtDbContext (DbSet)</div>
+        <div class="file-path">…/Persistence/OtDbContext.cs</div>
+        <div class="file-desc">Agregar: <code>DbSet&lt;Producto&gt; Productos</code></div>
+        <div class="tooltip">
+          <strong>OtDbContext.cs — Agregar DbSet</strong>
+          Añadir la línea:<br>
+          <code>public DbSet&lt;Producto&gt; Productos =&gt; Set&lt;Producto&gt;();</code><br><br>
+          Y en <code>OnModelCreating</code> agregar el QueryFilter:<br>
+          <code>modelBuilder.Entity&lt;Producto&gt;()<br>  .HasQueryFilter(x =&gt; !x.EstaEliminado);</code>
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">Migration</div>
+        <div class="file-path">…/Migrations/</div>
+        <div class="file-desc">Genera tabla <code>ot_producto</code> en MariaDB</div>
+        <div class="tooltip">
+          <strong>Migración EF Core</strong>
+          Ejecutar:<br>
+          <code>add-migration AddProducto</code><br>
+          <code>update-database</code><br><br>
+          Crea la tabla <code>ot_producto</code> con todas las columnas.
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">DI Registration</div>
+        <div class="file-path">Program.cs / Extensions</div>
+        <div class="file-desc">Registrar el repositorio en el contenedor</div>
+        <div class="tooltip">
+          <strong>Inyección de Dependencias</strong>
+          <code>services.AddScoped&lt;IProductoRepository, ProductoRepository&gt;();</code><br>
+          <code>services.AddScoped&lt;CrearProductoUseCase&gt;();</code><br>
+          <code>services.AddScoped&lt;ListarProductoUseCase&gt;();</code><br>
+          … (un AddScoped por cada UseCase)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARROW 3 -->
+  <div class="arrow">
+    <div class="arrow-line"></div>
+    <div class="arrow-label">llama</div>
+    <div class="arrow-head"></div>
+  </div>
+
+  <!-- API -->
+  <div class="layer api">
+    <div class="layer-header">
+      <span class="layer-icon">🌐</span>
+      API Layer
+      <span style="font-size:0.6rem;opacity:0.7">TS.Cronos.OT.Api</span>
+    </div>
+    <div class="layer-body">
+      <div class="file-card">
+        <div class="file-name">ProductoController.cs</div>
+        <div class="file-path">…/Controllers/CostoBienes/</div>
+        <div class="file-desc">Define los endpoints HTTP REST. Constructor clásico.</div>
+        <div class="tooltip">
+          <strong>🌐 ProductoController.cs</strong>
+          Route: <code>api/inventary/producto</code><br><br>
+          Endpoints:<br>
+          <code>GET /</code> → Listar<br>
+          <code>POST /</code> → Crear<br>
+          <code>PUT /{id}</code> → Editar<br>
+          <code>PATCH /{id}/estado</code> → Desactivar<br>
+          <code>DELETE /{id}</code> → Eliminar<br><br>
+          Lee <code>TenantId</code> y <code>UserId</code> del JWT via <code>ClaimsHelper.ObtenerDatos(User)</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARROW 4 -->
+  <div class="arrow">
+    <div class="arrow-line"></div>
+    <div class="arrow-label">consume</div>
+    <div class="arrow-head"></div>
+  </div>
+
+  <!-- WEB -->
+  <div class="layer web">
+    <div class="layer-header">
+      <span class="layer-icon">🖥️</span>
+      Web (Blazor)
+      <span style="font-size:0.6rem;opacity:0.7">TS.Cronos.OT.Web</span>
+    </div>
+    <div class="layer-body">
+      <div class="file-card">
+        <div class="file-name">ProductoModel.cs</div>
+        <div class="file-path">…/Models/CostoBienes/</div>
+        <div class="file-desc">Modelo de formulario con Data Annotations para validación Blazor</div>
+        <div class="tooltip">
+          <strong>📋 ProductoModel.cs</strong>
+          Propiedades con atributos:<br>
+          <code>[Required] Nombre</code><br>
+          <code>[Required][MaxLength(50)] CodigoSap</code><br>
+          <code>[Range(0,…)] Costo?</code><br>
+          <code>[Required] Unidad</code><br>
+          <code>[Required] Categoria</code><br><br>
+          Distinto al DTO: este modelo es para el formulario Blazor con validación cliente.
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">ProductoApiService.cs</div>
+        <div class="file-path">…/Services/CostoBienes/</div>
+        <div class="file-desc">Llama al API mediante <code>HttpClient</code>. Hereda <code>ApiServiceBase</code>.</div>
+        <div class="tooltip">
+          <strong>🔗 ProductoApiService.cs</strong>
+          Hereda de <code>ApiServiceBase</code> que ya tiene:<br>
+          • <code>SetAuth()</code> — inyecta JWT en header<br>
+          • <code>ManejarRespuestaAsync()</code><br>
+          • <code>LeerErrorAsync()</code><br><br>
+          Métodos:<br>
+          <code>ListarAsync()</code><br>
+          <code>CrearAsync(model)</code><br>
+          <code>EditarAsync(id, model)</code><br>
+          <code>CambiarEstadoAsync(id)</code><br>
+          <code>EliminarAsync(id)</code>
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">Producto.razor</div>
+        <div class="file-path">…/Pages/CostoBienes/</div>
+        <div class="file-desc">Página Blazor con tabla, búsqueda, modales CRUD y estilos <code>md-*</code></div>
+        <div class="tooltip">
+          <strong>🖥️ Producto.razor</strong>
+          Patrón masterdata:<br>
+          • Barra de búsqueda dual (Nombre + Categoría)<br>
+          • Tabla paginada con scroll interno<br>
+          • Badge de estado (activo/inactivo)<br>
+          • Mini-modal apilado para Crear/Editar<br>
+          • Guards en <code>OnAfterRenderAsync(firstRender)</code><br><br>
+          <code>@code</code>: inject <code>ProductoApiService</code>, métodos de carga, filtrado, submit.
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="file-name">Producto.razor.css</div>
+        <div class="file-path">…/Pages/CostoBienes/</div>
+        <div class="file-desc">Estilos scoped de la página (si los necesita)</div>
+        <div class="tooltip">
+          Estilos específicos de la página. Los estilos comunes van en <code>masterdata.css</code> con prefijo <code>md-*</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- DB Table -->
+<div class="db-section">
+  <div class="dep-note">
+    ⬆️ Dependencias van <span>hacia adentro</span> (hacia Domain). Domain no conoce nada de afuera. 
+    Infrastructure implementa las interfaces definidas en Application. 
+    Web y API nunca acceden directo a la BD.
+  </div>
+
+  <div class="db-box">
+    <div class="db-title">📦 Tabla en MariaDB</div>
+    <div class="db-name">ot_producto</div>
+    <div class="db-cols">
+      <span class="db-col pk">🔑 id (INT, PK)</span>
+      <span class="db-col req">nombre (VARCHAR 300)</span>
+      <span class="db-col req">codigo_sap (VARCHAR 50)</span>
+      <span class="db-col opt">costo (DECIMAL 12,2 ?)</span>
+      <span class="db-col req">unidad (VARCHAR 20)</span>
+      <span class="db-col req">categoria (VARCHAR 100)</span>
+      <span class="db-col req">activo (TINYINT)</span>
+      <span class="db-col opt">tenant_id (INT)</span>
+      <span class="db-col opt">creado_en (DATETIME)</span>
+      <span class="db-col opt">modificado_en (DATETIME)</span>
+      <span class="db-col opt">esta_eliminado (TINYINT)</span>
+    </div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#fbbf24"></div>PK</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#5eead4"></div>Requerido</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#6b7280"></div>Opcional / Auditoría</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
