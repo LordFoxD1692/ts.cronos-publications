@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TS.Cronos OT — Arquitectura</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0d6e7a; --teal-light: #1a8a99; --teal-dark: #0a5460;
+    --orange: #f97316; --amber: #f59e0b;
+    --slate: #0f172a; --slate2: #1e293b; --slate3: #334155;
+    --text: #e2e8f0; --muted: #94a3b8; --border: rgba(255,255,255,.08);
+    --font: 'Space Grotesk', sans-serif; --mono: 'JetBrains Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font); background: var(--slate); color: var(--text); overflow-x: hidden; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(15,23,42,.9); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 32px; height: 56px;
+  }
+  .nav-logo { font-family: var(--mono); font-size: .85rem; color: var(--teal-light); font-weight: 700; margin-right: 24px; }
+  .nav-pill {
+    font-size: .72rem; font-weight: 600; padding: 4px 12px; border-radius: 20px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    transition: all .2s; white-space: nowrap;
+  }
+  .nav-pill:hover, .nav-pill.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+
+  /* ── SLIDES ── */
+  .slide {
+    min-height: 100vh; padding: 80px 64px 60px;
+    display: none; flex-direction: column; justify-content: center;
+    animation: fadeIn .4s ease;
+  }
+  .slide.active { display: flex; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+  /* ── HERO ── */
+  .hero-bg {
+    background: radial-gradient(ellipse at 20% 50%, rgba(13,110,122,.3) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(249,115,22,.15) 0%, transparent 50%),
+                var(--slate);
+  }
+  .hero-tag { font-family: var(--mono); font-size: .7rem; color: var(--teal-light); letter-spacing: .15em; text-transform: uppercase; margin-bottom: 16px; }
+  .hero-title { font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 700; line-height: 1.1; margin-bottom: 20px; }
+  .hero-title span { color: var(--teal-light); }
+  .hero-sub { font-size: 1.1rem; color: var(--muted); max-width: 560px; line-height: 1.6; margin-bottom: 48px; }
+  .hero-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    font-family: var(--mono); font-size: .72rem; padding: 6px 14px; border-radius: 6px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--muted);
+  }
+  .chip.teal { background: rgba(13,110,122,.2); border-color: rgba(13,110,122,.5); color: var(--teal-light); }
+  .chip.orange { background: rgba(249,115,22,.15); border-color: rgba(249,115,22,.4); color: var(--orange); }
+
+  /* ── SLIDE TITLES ── */
+  .s-label { font-family: var(--mono); font-size: .65rem; color: var(--teal-light); letter-spacing: .2em; text-transform: uppercase; margin-bottom: 8px; }
+  .s-title { font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 700; margin-bottom: 8px; }
+  .s-sub { color: var(--muted); font-size: .95rem; margin-bottom: 40px; }
+
+  /* ── LAYER CARDS ── */
+  .layers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .layer {
+    background: var(--slate2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 16px; cursor: pointer; transition: all .25s; position: relative; overflow: hidden;
+  }
+  .layer::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent, var(--teal)); border-radius: 12px 12px 0 0;
+  }
+  .layer:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.15); box-shadow: 0 12px 32px rgba(0,0,0,.4); }
+  .layer-icon { font-size: 1.6rem; margin-bottom: 12px; }
+  .layer-name { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .layer-desc { font-size: .8rem; color: var(--text); line-height: 1.5; margin-bottom: 12px; }
+  .layer-files { display: flex; flex-direction: column; gap: 4px; }
+  .layer-file { font-family: var(--mono); font-size: .65rem; color: var(--muted); background: rgba(255,255,255,.04); border-radius: 4px; padding: 3px 7px; }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin: 32px 0; }
+  .flow-box {
+    background: var(--slate2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; min-width: 130px; text-align: center;
+  }
+  .flow-box .fb-icon { font-size: 1.2rem; margin-bottom: 6px; }
+  .flow-box .fb-name { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .flow-box .fb-detail { font-family: var(--mono); font-size: .62rem; color: var(--teal-light); margin-top: 4px; }
+  .flow-arrow { color: var(--muted); font-size: 1.2rem; padding: 0 8px; }
+
+  /* ── WHY CARDS (2-col) ── */
+  .why-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .why-card { background: var(--slate2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .why-card h3 { font-size: .9rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .why-card h3 .badge { font-family: var(--mono); font-size: .6rem; padding: 2px 8px; border-radius: 4px; background: rgba(13,110,122,.3); color: var(--teal-light); }
+  .why-card p { font-size: .82rem; color: var(--muted); line-height: 1.65; }
+  .why-card p strong { color: var(--text); }
+  .why-card .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .vs-col { border-radius: 8px; padding: 12px; font-size: .75rem; }
+  .vs-col.bad  { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); }
+  .vs-col.good { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.2); }
+  .vs-col .vs-lbl { font-weight: 700; font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; }
+  .vs-col.bad .vs-lbl  { color: #f87171; }
+  .vs-col.good .vs-lbl { color: #4ade80; }
+  .vs-col code { font-family: var(--mono); font-size: .68rem; display: block; color: var(--text); line-height: 1.5; white-space: pre; }
+
+  /* ── DDD CARD ── */
+  .ddd-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .ddd-card { background: var(--slate2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+  .ddd-card h3 { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--teal-light); margin-bottom: 10px; }
+  .ddd-card p { font-size: .8rem; color: var(--muted); line-height: 1.6; }
+  .ddd-card ul { margin-top: 10px; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .ddd-card li { font-size: .75rem; color: var(--muted); padding-left: 14px; position: relative; }
+  .ddd-card li::before { content: '→'; position: absolute; left: 0; color: var(--teal-light); }
+
+  /* ── RULE TABLE ── */
+  .rule-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+  .rule-table thead tr { background: rgba(13,110,122,.2); }
+  .rule-table th { text-align: left; padding: 10px 14px; font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+  .rule-table td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; }
+  .rule-table td:first-child { font-family: var(--mono); color: var(--teal-light); font-size: .72rem; white-space: nowrap; }
+  .rule-table td code { font-family: var(--mono); font-size: .7rem; background: rgba(255,255,255,.06); padding: 2px 6px; border-radius: 4px; color: var(--orange); }
+  .rule-table tr:hover td { background: rgba(255,255,255,.02); }
+
+  /* ── FOOTER CONTROLS ── */
+  .controls {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(15,23,42,.95); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; height: 52px;
+  }
+  .ctrl-info { font-family: var(--mono); font-size: .7rem; color: var(--muted); }
+  .ctrl-btns { display: flex; gap: 8px; }
+  .ctrl-btn {
+    background: var(--slate2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 6px 18px; cursor: pointer; font-size: .8rem;
+    font-family: var(--font); transition: all .2s;
+  }
+  .ctrl-btn:hover { background: var(--teal); border-color: var(--teal); }
+  .ctrl-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .ctrl-progress { font-family: var(--mono); font-size: .7rem; color: var(--teal-light); }
+
+  /* ── JWT SLIDE ── */
+  .jwt-flow { display: flex; flex-direction: column; gap: 12px; }
+  .jwt-step {
+    display: flex; align-items: flex-start; gap: 16px;
+    background: var(--slate2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px;
+  }
+  .jwt-num {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(13,110,122,.3); border: 1px solid rgba(13,110,122,.6);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: .7rem; font-weight: 700; color: var(--teal-light);
+  }
+  .jwt-content h4 { font-size: .82rem; font-weight: 600; margin-bottom: 4px; }
+  .jwt-content p { font-size: .75rem; color: var(--muted); line-height: 1.5; }
+  .jwt-content code { font-family: var(--mono); font-size: .7rem; color: var(--orange); }
+
+  /* ── HIGHLIGHTS ── */
+  .hl-teal { color: var(--teal-light); }
+  .hl-orange { color: var(--orange); }
+  .tag-green { display: inline-block; font-family: var(--mono); font-size: .6rem; padding: 1px 7px; border-radius: 4px; background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.25); margin-left: 6px; }
+  .tag-red { display: inline-block; font-family: var(--mono); font-size: .6rem; padding: 1px 7px; border-radius: 4px; background: rgba(239,68,68,.15); color: #f87171; border: 1px solid rgba(239,68,68,.25); margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">TS.Cronos.OT</span>
+  <button class="nav-pill active" onclick="goTo(0)">Intro</button>
+  <button class="nav-pill" onclick="goTo(1)">Capas</button>
+  <button class="nav-pill" onclick="goTo(2)">Flujo</button>
+  <button class="nav-pill" onclick="goTo(3)">¿Por qué Clean+DDD?</button>
+  <button class="nav-pill" onclick="goTo(4)">Domain</button>
+  <button class="nav-pill" onclick="goTo(5)">Application</button>
+  <button class="nav-pill" onclick="goTo(6)">Constructores</button>
+  <button class="nav-pill" onclick="goTo(7)">JWT</button>
+  <button class="nav-pill" onclick="goTo(8)">Reglas del proyecto</button>
+</nav>
+
+<!-- ═══════════════════════════════════ SLIDE 0 — HERO ═══════════════════════════════════ -->
+<section class="slide hero-bg active" id="s0">
+  <div class="hero-tag">Charla técnica para practicantes · 2026</div>
+  <h1 class="hero-title">TS.Cronos OT<br><span>— Así está construido</span></h1>
+  <p class="hero-sub">Una recorrida por la arquitectura real del sistema: por qué cada pieza existe, dónde va cada cosa y cómo colaboran todas las capas.</p>
+  <div class="hero-chips">
+    <span class="chip teal">.NET 8</span>
+    <span class="chip teal">Clean Architecture</span>
+    <span class="chip teal">DDD</span>
+    <span class="chip teal">Blazor Server</span>
+    <span class="chip teal">Web API</span>
+    <span class="chip teal">EF Core + MariaDB</span>
+    <span class="chip orange">JWT puro</span>
+    <span class="chip orange">Multi-tenant</span>
+    <span class="chip">Feature Slicing</span>
+    <span class="chip">Soft Delete</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SLIDE 1 — CAPAS ═══════════════════════════════════ -->
+<section class="slide" id="s1">
+  <div class="s-label">Slide 01</div>
+  <h2 class="s-title">Las 5 capas del sistema</h2>
+  <p class="s-sub">Cada capa tiene una responsabilidad única. Ninguna salta hacia afuera de su rol.</p>
+  <div class="layers">
+    <div class="layer" style="--accent:#9333ea">
+      <div class="layer-icon">🏗️</div>
+      <div class="layer-name">Domain</div>
+      <div class="layer-desc">El corazón. Entidades de negocio, reglas que no dependen de nada externo.</div>
+      <div class="layer-files">
+        <span class="layer-file">RedAsistencial.cs</span>
+        <span class="layer-file">MicroRed.cs</span>
+        <span class="layer-file">Serie.cs</span>
+        <span class="layer-file">AuditableEntity</span>
+      </div>
+    </div>
+    <div class="layer" style="--accent:#0d6e7a">
+      <div class="layer-icon">⚙️</div>
+      <div class="layer-name">Application</div>
+      <div class="layer-desc">Casos de uso. Orquesta el dominio. Define qué puede hacer el sistema.</div>
+      <div class="layer-files">
+        <span class="layer-file">CrearXxxUseCase</span>
+        <span class="layer-file">EditarXxxUseCase</span>
+        <span class="layer-file">IXxxRepository</span>
+        <span class="layer-file">XxxDto.cs</span>
+      </div>
+    </div>
+    <div class="layer" style="--accent:#f97316">
+      <div class="layer-icon">🔌</div>
+      <div class="layer-name">Infrastructure</div>
+      <div class="layer-desc">Detalles técnicos: BD, EF Core, repositorios concretos, JWT.</div>
+      <div class="layer-files">
+        <span class="layer-file">XxxRepository.cs</span>
+        <span class="layer-file">OtDbContext.cs</span>
+        <span class="layer-file">TenantService.cs</span>
+        <span class="layer-file">JwtService.cs</span>
+      </div>
+    </div>
+    <div class="layer" style="--accent:#f59e0b">
+      <div class="layer-icon">🌐</div>
+      <div class="layer-name">API</div>
+      <div class="layer-desc">Expone HTTP. Recibe peticiones, llama UseCases, devuelve respuestas.</div>
+      <div class="layer-files">
+        <span class="layer-file">MicroRedController</span>
+        <span class="layer-file">GET / POST / PUT</span>
+        <span class="layer-file">PATCH /estado</span>
+        <span class="layer-file">DELETE</span>
+      </div>
+    </div>
+    <div class="layer" style="--accent:#06b6d4">
+      <div class="layer-icon">🖥️</div>
+      <div class="layer-name">Web (Blazor)</div>
+      <div class="layer-desc">UI del usuario. Consume la API REST. Sin lógica de negocio propia.</div>
+      <div class="layer-files">
+        <span class="layer-file">MicroRed.razor</span>
+        <span class="layer-file">MicroRedApiService</span>
+        <span class="layer-file">MicroRedModel</span>
+        <span class="layer-file">TokenService</span>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:24px;padding:16px 20px;background:rgba(13,110,122,.1);border:1px solid rgba(13,110,122,.3);border-radius:10px;font-size:.8rem;color:var(--muted)">
+    ⚠️ <strong style="color:var(--text)">Regla de oro:</strong> las dependencias apuntan hacia adentro. Domain no conoce nada. Application conoce solo Domain. Infrastructure y API conocen Application. Web solo habla con la API por HTTP.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SLIDE 2 — FLUJO ═══════════════════════════════════ -->
+<section class="slide" id="s2">
+  <div class="s-label">Slide 02</div>
+  <h2 class="s-title">¿Qué pasa cuando hago click en "Guardar"?</h2>
+  <p class="s-sub">Seguimos una petición de creación de MicroRed de principio a fin.</p>
+
+  <div class="flow">
+    <div class="flow-box" style="border-color:rgba(6,182,212,.4)">
+      <div class="fb-icon">🖥️</div>
+      <div class="fb-name">Razor</div>
+      <div class="fb-detail">MicroRed.razor</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="border-color:rgba(6,182,212,.4)">
+      <div class="fb-icon">📡</div>
+      <div class="fb-name">ApiService</div>
+      <div class="fb-detail">PostAsJsonAsync</div>
+    </div>
+    <div class="flow-arrow">→ HTTP POST →</div>
+    <div class="flow-box" style="border-color:rgba(245,158,11,.4)">
+      <div class="fb-icon">🌐</div>
+      <div class="fb-name">Controller</div>
+      <div class="fb-detail">MicroRedController</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="border-color:rgba(13,110,122,.6)">
+      <div class="fb-icon">⚙️</div>
+      <div class="fb-name">UseCase</div>
+      <div class="fb-detail">CrearMicroRed</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="border-color:rgba(147,51,234,.4)">
+      <div class="fb-icon">🏗️</div>
+      <div class="fb-name">Domain</div>
+      <div class="fb-detail">new MicroRed(...)</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="border-color:rgba(249,115,22,.4)">
+      <div class="fb-icon">🔌</div>
+      <div class="fb-name">Repository</div>
+      <div class="fb-detail">AddAsync → EF Core</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="border-color:rgba(16,185,129,.4)">
+      <div class="fb-icon">🗄️</div>
+      <div class="fb-name">MariaDB</div>
+      <div class="fb-detail">ot_micro_red</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:8px">
+    <div style="background:var(--slate2);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--teal-light);margin-bottom:8px">UseCase hace:</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:5px">
+        <li style="font-size:.75rem;color:var(--muted)">✅ new MicroRed(dto.RedAsistencialId, dto.Nombre)</li>
+        <li style="font-size:.75rem;color:var(--muted)">✅ entity.EstablecerTenant(tenantId)</li>
+        <li style="font-size:.75rem;color:var(--muted)">✅ entity.EstablecerCreador(creadoPor)</li>
+        <li style="font-size:.75rem;color:var(--muted)">✅ await repo.AddAsync(entity)</li>
+        <li style="font-size:.75rem;color:var(--muted)">✅ return Result&lt;int&gt;.Success(id)</li>
+      </ul>
+    </div>
+    <div style="background:var(--slate2);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--orange);margin-bottom:8px">Domain valida:</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:5px">
+        <li style="font-size:.75rem;color:var(--muted)">🔴 redAsistencialId ≤ 0 → Exception</li>
+        <li style="font-size:.75rem;color:var(--muted)">🔴 nombre vacío → Exception</li>
+        <li style="font-size:.75rem;color:var(--muted)">✅ Nombre.ToUpper() automático</li>
+        <li style="font-size:.75rem;color:var(--muted)">✅ Activo = true por defecto</li>
+      </ul>
+    </div>
+    <div style="background:var(--slate2);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">Controller devuelve:</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:5px">
+        <li style="font-size:.75rem;color:var(--muted)">✅ 200 OK + { id } si todo bien</li>
+        <li style="font-size:.75rem;color:var(--muted)">🔴 400 BadRequest + mensaje</li>
+        <li style="font-size:.75rem;color:var(--muted)">🔴 401 si no hay token</li>
+        <li style="font-size:.75rem;color:var(--muted)">🔴 403 si no tiene rol</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SLIDE 3 — POR QUÉ CLEAN+DDD ═══════════════════════════════════ -->
+<section class="slide" id="s3">
+  <div class="s-label">Slide 03</div>
+  <h2 class="s-title">¿Por qué Clean Architecture + DDD?</h2>
+  <p class="s-sub">No es moda. Cada patrón resuelve un problema concreto.</p>
+  <div class="why-grid">
+    <div class="why-card">
+      <h3>🧱 Clean Architecture <span class="badge">separación</span></h3>
+      <p>Si mañana cambiamos de MariaDB a PostgreSQL, <strong>solo tocamos Infrastructure</strong>. El Domain, Application y Web no se enteran. Sin Clean Architecture, el cambio de BD rompe medio sistema.</p>
+      <p style="margin-top:10px">Lo mismo si cambiamos Blazor por React: el API y toda la lógica de negocio sobreviven intactos.</p>
+    </div>
+    <div class="why-card">
+      <h3>📐 DDD — Domain-Driven Design <span class="badge">lenguaje</span></h3>
+      <p>El código habla el mismo idioma que el negocio. En EsSalud existe <strong>MicroRed</strong>, <strong>Ipress</strong>, <strong>Serie</strong>. En el código también. No hay traducción mental.</p>
+      <p style="margin-top:10px">Las reglas de negocio viven en el Domain: <code>if (numeroFin &lt;= numeroInicio) throw</code>. No en el controller, no en el frontend.</p>
+    </div>
+    <div class="why-card">
+      <h3>🔧 Feature Slicing <span class="badge">escalabilidad</span></h3>
+      <p>Todo lo de <strong>MicroRed</strong> vive junto:<br><code>Application/Ubicaciones/MicroRedes/</code><br>DTOs, interfaces, UseCases — sin buscar en 5 carpetas distintas.</p>
+      <p style="margin-top:10px">Cuando agregan un practicante nuevo, puede trabajar en <em>su feature</em> sin tocar la de otro.</p>
+    </div>
+    <div class="why-card">
+      <h3>📦 Un UseCase por operación <span class="badge">claridad</span></h3>
+      <p>Cada clase tiene <strong>una sola razón para cambiar</strong>. <code>CrearMicroRedUseCase</code> solo crea. <code>DesactivarMicroRedUseCase</code> solo desactiva. Si hay un bug en la desactivación, sabes exactamente dónde ir.</p>
+      <p style="margin-top:10px">Sin este patrón: un método gigante en el controller que hace todo y nadie entiende qué puede romper.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SLIDE 4 — DOMAIN ═══════════════════════════════════ -->
+<section class="slide" id="s4">
+  <div class="s-label">Slide 04</div>
+  <h2 class="s-title">El Domain — la capa más importante</h2>
+  <p class="s-sub">No depende de nada. No conoce EF Core, ni HTTP, ni Blazor. Solo negocio puro.</p>
+  <div class="ddd-grid">
+    <div class="ddd-card">
+      <h3>AuditableEntity (Shared)</h3>
+      <p>Clase base que todas las entidades heredan. Provee automáticamente:</p>
+      <ul>
+        <li>TenantId — multi-empresa</li>
+        <li>FechaCreacion / CreadoPor</li>
+        <li>FechaActualizacion / ActualizadoPor</li>
+        <li>Eliminado / FechaEliminacion (soft delete)</li>
+        <li>ActualizarFecha(usuarioId)</li>
+        <li>MarcarEliminado(usuarioId)</li>
+      </ul>
+    </div>
+    <div class="ddd-card">
+      <h3>Responsabilidad del Domain</h3>
+      <p>Una entidad Domain solo hace tres cosas:</p>
+      <ul>
+        <li>Validar sus propios datos en el constructor</li>
+        <li>Mutar su propio estado via métodos</li>
+        <li>Lanzar excepción si algo es inválido</li>
+      </ul>
+      <p style="margin-top:10px;font-size:.75rem">🔑 <strong>NO llama ActualizarFecha() internamente.</strong> Eso lo hace el UseCase, que es quien sabe el usuarioId.</p>
+    </div>
+    <div class="ddd-card">
+      <h3>Separación de acciones</h3>
+      <p>Cada entidad tiene dos operaciones de estado separadas:</p>
+      <ul>
+        <li><code style="color:var(--amber);font-family:var(--mono);font-size:.72rem">CambiarEstado()</code> → toggle activo/inactivo, sigue visible</li>
+        <li><code style="color:var(--orange);font-family:var(--mono);font-size:.72rem">MarcarEliminado()</code> → soft delete real, desaparece</li>
+      </ul>
+      <p style="margin-top:10px;font-size:.75rem">Dos endpoints distintos: <code style="font-family:var(--mono);font-size:.68rem">PATCH /estado</code> y <code style="font-family:var(--mono);font-size:.68rem">DELETE</code></p>
+    </div>
+  </div>
+  <div style="margin-top:20px;background:var(--slate2);border:1px solid var(--border);border-radius:10px;padding:20px">
+    <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--teal-light);margin-bottom:12px">Serie.cs — ejemplo completo del patrón correcto</div>
+    <pre style="font-family:var(--mono);font-size:.72rem;color:var(--text);line-height:1.6;overflow-x:auto"><span style="color:#94a3b8">// ✅ Constructor valida reglas de negocio</span>
+<span style="color:#7dd3fc">public</span> Serie(<span style="color:#fbbf24">int</span> microRedId, <span style="color:#fbbf24">int</span> anio, <span style="color:#fbbf24">int</span> numeroInicio, <span style="color:#fbbf24">int</span> numeroFin)
+{
+    <span style="color:#f87171">if</span> (microRedId &lt;= 0)           <span style="color:#f87171">throw new</span> ArgumentException(<span style="color:#86efac">"La MicroRed es obligatoria."</span>);
+    <span style="color:#f87171">if</span> (numeroFin &lt;= numeroInicio)  <span style="color:#f87171">throw new</span> ArgumentException(<span style="color:#86efac">"Fin debe ser mayor al inicio."</span>);
+    MicroRedId = microRedId; Anio = anio; Activo = <span style="color:#fbbf24">true</span>;
+}
+
+<span style="color:#94a3b8">// ✅ Mutación pura — sin lógica de auditoría (eso lo hace el UseCase)</span>
+<span style="color:#7dd3fc">public void</span> Actualizar(<span style="color:#fbbf24">int</span> anio, <span style="color:#fbbf24">int</span> numeroInicio, <span style="color:#fbbf24">int</span> numeroFin)
+{
+    <span style="color:#f87171">if</span> (numeroFin &lt;= numeroInicio) <span style="color:#f87171">throw new</span> ArgumentException(<span style="color:#86efac">"Fin debe ser mayor al inicio."</span>);
+    Anio = anio; NumeroInicio = numeroInicio; NumeroFin = numeroFin;
+    <span style="color:#94a3b8">// ← NO hay ActualizarFecha() aquí. El UseCase la llama con el userId.</span>
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SLIDE 5 — APPLICATION ═══════════════════════════════════ -->
+<section class="slide" id="s5">
+  <div class="s-label">Slide 05</div>
+  <h2 class="s-title">Application — los casos de uso</h2>
+  <p class="s-sub">Orquesta el dominio. Sabe qué pasa, en qué orden, con quién.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <div style="background:var(--slate2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px">
+        <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--teal-light);margin-bottom:10px">EditarSerieUseCase — patrón correcto ✅</div>
+        <pre style="font-family:var(--mono);font-size:.7rem;color:var(--text);line-height:1.6"><span style="color:#7dd3fc">public async</span> Task&lt;Result&gt; EjecutarAsync(
+    <span style="color:#fbbf24">int</span> id, UpdateSerieDto dto,
+    <span style="color:#fbbf24">int</span> actualizadoPor, <span style="color:#fbbf24">int</span> tenantId)
+{
+    <span style="color:#7dd3fc">var</span> entity = <span style="color:#7dd3fc">await</span> repo.GetByIdAsync(id, tenantId);
+    <span style="color:#f87171">if</span> (entity <span style="color:#f87171">is null</span>) <span style="color:#f87171">return</span> Result.Failure(<span style="color:#86efac">"No encontrado."</span>);
+    <span style="color:#f87171">try</span> {
+        entity.Actualizar(dto.Anio, dto.NumeroInicio, dto.NumeroFin);
+        entity.ActualizarFecha(actualizadoPor); <span style="color:#94a3b8">// ← con userId</span>
+        <span style="color:#7dd3fc">await</span> repo.UpdateAsync(entity);
+        <span style="color:#f87171">return</span> Result.Success();
+    }
+    <span style="color:#f87171">catch</span> (ArgumentException ex) { <span style="color:#f87171">return</span> Result.Failure(ex.Message); }
+}</pre>
+      </div>
+      <div style="background:rgba(13,110,122,.08);border:1px solid rgba(13,110,122,.25);border-radius:10px;padding:16px">
+        <div style="font-size:.7rem;font-weight:600;margin-bottom:8px">¿Por qué <code style="font-family:var(--mono);font-size:.68rem">Result&lt;T&gt;</code> en lugar de exceptions?</div>
+        <p style="font-size:.75rem;color:var(--muted);line-height:1.5">El UseCase devuelve un resultado tipado: <code style="font-family:var(--mono);font-size:.68rem">Result.Success()</code> o <code style="font-family:var(--mono);font-size:.68rem">Result.Failure("mensaje")</code>. El Controller decide el código HTTP. Así el dominio no depende de HTTP ni de cómo se entrega el error.</p>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:.75rem;font-weight:600;margin-bottom:12px;color:var(--muted)">5 UseCases por entidad — cada uno con un único propósito:</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="background:var(--slate2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:.72rem">CrearXxxUseCase</span>
+          <span style="font-size:.7rem;color:var(--muted)">POST — nuevo registro</span>
+        </div>
+        <div style="background:var(--slate2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:.72rem">ListarXxxUseCase</span>
+          <span style="font-size:.7rem;color:var(--muted)">GET — todos los registros</span>
+        </div>
+        <div style="background:var(--slate2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:.72rem">EditarXxxUseCase</span>
+          <span style="font-size:.7rem;color:var(--muted)">PUT — actualizar datos</span>
+        </div>
+        <div style="background:var(--slate2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:.72rem">DesactivarXxxUseCase</span>
+          <span style="font-size:.7rem;color:var(--muted)">PATCH /estado — toggle</span>
+        </div>
+        <div style="background:var(--slate2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:.72rem">EliminarXxxUseCase</span>
+          <span style="font-size:.7rem;color:var(--muted)">DELETE — soft delete real</span>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:12px 16px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);border-radius:8px">
+        <div style="font-size:.72rem;font-weight:600;color:var(--orange);margin-bottom:4px">IRepository vive en Application ← importante</div>
+        <div style="font-size:.72rem;color:var(--muted)">La interfaz <code style="font-family:var(--mono)">ISerieRepository</code> está en Application. La implementación concreta <code style="font-family:var(--mono)">SerieRepository</code> está en Infrastructure. Application no sabe que existe EF Core.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SLIDE 6 — CONSTRUCTORES ═══════════════════════════════════ -->
+<section class="slide" id="s6">
+  <div class="s-label">Slide 06</div>
+  <h2 class="s-title">¿Por qué constructores distintos?</h2>
+  <p class="s-sub">Controllers usan constructor clásico. UseCases y ApiServices usan primary constructor (C# 12). No es al azar.</p>
+  <div class="why-grid">
+    <div class="why-card">
+      <h3>Controller — Clásico <span class="badge">complejidad alta</span></h3>
+      <div class="vs">
+        <div class="vs-col bad">
+          <div class="vs-lbl">❌ Primary (no usar)</div>
+          <code>public class MicroRedController(
+  CrearMicroRedUseCase crear,
+  ListarMicroRedUseCase listar,
+  EditarMicroRedUseCase editar,
+  DesactivarMicroRedUseCase des,
+  EliminarMicroRedUseCase eli,
+  CrearSerieUseCase cSerie,
+  ...más) : ControllerBase</code>
+        </div>
+        <div class="vs-col good">
+          <div class="vs-lbl">✅ Clásico (usar)</div>
+          <code>public class MicroRedController
+  : ControllerBase
+{
+  private readonly
+    CrearMicroRedUseCase _crear;
+  ...
+
+  public MicroRedController(
+    CrearMicroRedUseCase crear,
+    ...)
+  {
+    _crear = crear;
+  }
+}</code>
+        </div>
+      </div>
+      <p style="margin-top:12px;font-size:.75rem">Con muchas dependencias (8-10 en MicroRedController con Series), el primary constructor en la firma de clase se hace ilegible. El clásico es más explícito y más fácil de debuggear.</p>
+    </div>
+    <div class="why-card">
+      <h3>UseCase — Primary <span class="badge">simplicidad</span></h3>
+      <div class="vs">
+        <div class="vs-col bad">
+          <div class="vs-lbl">❌ Clásico (innecesario)</div>
+          <code>public class CrearSerieUseCase
+{
+  private readonly
+    ISerieRepository _repo;
+
+  public CrearSerieUseCase(
+    ISerieRepository repo)
+  {
+    _repo = repo;
+  }
+
+  public async Task EjecutarAsync...
+}</code>
+        </div>
+        <div class="vs-col good">
+          <div class="vs-lbl">✅ Primary (usar)</div>
+          <code>public class CrearSerieUseCase(
+  ISerieRepository repo)
+{
+  public async Task EjecutarAsync(
+    CreateSerieDto dto,
+    int creadoPor,
+    int tenantId)
+  {
+    var entity = new Serie(...);
+    ...
+  }
+}</code>
+        </div>
+      </div>
+      <p style="margin-top:12px;font-size:.75rem">Un UseCase tiene 1-2 dependencias máximo. El primary constructor elimina 6 líneas de boilerplate sin perder claridad. El compilador genera exactamente el mismo código.</p>
+    </div>
+  </div>
+  <div style="margin-top:16px;background:rgba(13,110,122,.08);border:1px solid rgba(13,110,122,.25);border-radius:10px;padding:14px 18px;font-size:.78rem;color:var(--muted)">
+    📌 <strong style="color:var(--text)">Regla del proyecto:</strong> Controllers y Repositories → constructor clásico. UseCases y ApiServices Web → primary constructor. Nunca mezclar estilos dentro del mismo tipo de clase.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SLIDE 7 — JWT ═══════════════════════════════════ -->
+<section class="slide" id="s7">
+  <div class="s-label">Slide 07</div>
+  <h2 class="s-title">JWT puro — sin ASP.NET Core Identity</h2>
+  <p class="s-sub">Elegimos JWT propio porque tenemos multi-tenancy y roles específicos del negocio.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+    <div class="jwt-flow">
+      <div class="jwt-step">
+        <div class="jwt-num">1</div>
+        <div class="jwt-content">
+          <h4>Usuario hace login</h4>
+          <p>POST <code>api/auth/login</code> con DNI + password. El <code>LoginUseCase</code> verifica contra la BD.</p>
+        </div>
+      </div>
+      <div class="jwt-step">
+        <div class="jwt-num">2</div>
+        <div class="jwt-content">
+          <h4>API devuelve token JWT</h4>
+          <p>El token incluye: <code>userId</code>, <code>tenantId</code>, <code>rol</code>, expiración. Todo firmado con la clave secreta.</p>
+        </div>
+      </div>
+      <div class="jwt-step">
+        <div class="jwt-num">3</div>
+        <div class="jwt-content">
+          <h4>Web guarda el token</h4>
+          <p>El Blazor <code>TokenService</code> lo guarda en memoria de sesión. Cada petición lo envía en el header <code>Authorization: Bearer xxx</code>.</p>
+        </div>
+      </div>
+      <div class="jwt-step">
+        <div class="jwt-num">4</div>
+        <div class="jwt-content">
+          <h4>API valida automáticamente</h4>
+          <p>El middleware de ASP.NET verifica la firma del token. Si falla → 401. Si el rol no alcanza → 403. Sin tocar la BD.</p>
+        </div>
+      </div>
+      <div class="jwt-step">
+        <div class="jwt-num">5</div>
+        <div class="jwt-content">
+          <h4>Controller extrae datos</h4>
+          <p><code>ClaimsHelper.ObtenerDatos(User)</code> extrae <code>userId</code> y <code>tenantId</code> del token para pasarlos al UseCase.</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div style="background:var(--slate2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:14px">
+        <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--teal-light);margin-bottom:10px">¿Por qué NO Identity?</div>
+        <p style="font-size:.75rem;color:var(--muted);line-height:1.6">ASP.NET Core Identity asume un modelo de usuario fijo con tablas propias. Nosotros tenemos <strong style="color:var(--text)">multi-tenant</strong> (una BD para N empresas), roles del negocio propios (Operador, Supervisor, Lectura) y la tabla <code style="font-family:var(--mono);font-size:.68rem">usuario</code> vive en Shared. Identity pelea con todo eso. JWT puro nos da control total.</p>
+      </div>
+      <div style="background:var(--slate2);border:1px solid var(--border);border-radius:10px;padding:20px">
+        <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--orange);margin-bottom:10px">Policies de autorización</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-family:var(--mono);font-size:.68rem;display:flex;gap:8px;align-items:center"><span style="color:var(--teal-light)">SoloAdmins</span><span style="color:var(--muted)">→ SuperAdmin, Admin</span></div>
+          <div style="font-family:var(--mono);font-size:.68rem;display:flex;gap:8px;align-items:center"><span style="color:var(--teal-light)">AccesoOT</span><span style="color:var(--muted)">→ + Operador</span></div>
+          <div style="font-family:var(--mono);font-size:.68rem;display:flex;gap:8px;align-items:center"><span style="color:var(--teal-light)">Supervisores</span><span style="color:var(--muted)">→ + Supervisor</span></div>
+          <div style="font-family:var(--mono);font-size:.68rem;display:flex;gap:8px;align-items:center"><span style="color:var(--teal-light)">SoloLectura</span><span style="color:var(--muted)">→ + Lectura</span></div>
+        </div>
+        <p style="font-size:.72rem;color:var(--muted);margin-top:12px">Ubicaciones y MasterData usan <code style="font-family:var(--mono);font-size:.68rem">[Authorize(Policy = Policies.SoloAdmins)]</code>. Los controllers de operación usan <code style="font-family:var(--mono);font-size:.68rem">AccesoOT</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SLIDE 8 — REGLAS ═══════════════════════════════════ -->
+<section class="slide" id="s8">
+  <div class="s-label">Slide 08</div>
+  <h2 class="s-title">Reglas que no se rompen</h2>
+  <p class="s-sub">Estas convenciones mantienen el proyecto coherente cuando trabajan muchas personas.</p>
+  <table class="rule-table">
+    <thead>
+      <tr>
+        <th>Regla</th>
+        <th>Por qué</th>
+        <th>Ejemplo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Una clase por archivo</td>
+        <td style="font-size:.75rem;color:var(--muted)">Git muestra cambios por archivo. Con dos clases en uno, un cambio toca un archivo que parece no relacionado.</td>
+        <td><code>MicroRed.cs</code> solo tiene <code>MicroRed</code></td>
+      </tr>
+      <tr>
+        <td>Namespaces file-scoped</td>
+        <td style="font-size:.75rem;color:var(--muted)">Menos indentación, más código visible en pantalla. C# 10+ lo permite nativamente.</td>
+        <td><code>namespace Xxx.Yyy;</code> sin llaves</td>
+      </tr>
+      <tr>
+        <td>IRepository en Application</td>
+        <td style="font-size:.75rem;color:var(--muted)">Application no puede depender de Infrastructure. La interfaz actúa como contrato que Infrastructure implementa.</td>
+        <td><code>ISerieRepository</code> en App, <code>SerieRepository</code> en Infra</td>
+      </tr>
+      <tr>
+        <td>Query filter automático</td>
+        <td style="font-size:.75rem;color:var(--muted)">Cada consulta filtra automáticamente por TenantId y Eliminado=false. Imposible mostrar datos de otra empresa por error.</td>
+        <td><code>.HasQueryFilter(x => !x.Eliminado && x.TenantId == ...)</code></td>
+      </tr>
+      <tr>
+        <td>ActualizarFecha() en UseCase</td>
+        <td style="font-size:.75rem;color:var(--muted)">El Domain no conoce quién es el usuario. Solo el UseCase tiene acceso a userId del token.</td>
+        <td><code>entity.Actualizar(...); entity.ActualizarFecha(userId);</code></td>
+      </tr>
+      <tr>
+        <td>PATCH /estado ≠ DELETE</td>
+        <td style="font-size:.75rem;color:var(--muted)">Desactivar (toggle) y eliminar son acciones distintas. Desactivar mantiene el dato visible como inactivo; eliminar lo borra de la lista.</td>
+        <td><code>CambiarEstado()</code> vs <code>MarcarEliminado()</code></td>
+      </tr>
+      <tr>
+        <td>GetAsync antes de ReadFromJsonAsync</td>
+        <td style="font-size:.75rem;color:var(--muted)">Así podemos interceptar 401 y 403 antes de intentar deserializar. Con GetFromJsonAsync el error se pierde.</td>
+        <td><code>var r = await http.GetAsync(url);</code><br><code>if (r.StatusCode == Forbidden) ...</code></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <span class="ctrl-info" id="slideInfo">Slide 1 de 9</span>
+  <div class="ctrl-btns">
+    <button class="ctrl-btn" id="btnPrev" onclick="prev()" disabled>← Anterior</button>
+    <button class="ctrl-btn" id="btnNext" onclick="next()">Siguiente →</button>
+  </div>
+  <span class="ctrl-progress" id="slideProgress">●○○○○○○○○</span>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const pills  = document.querySelectorAll('.nav-pill');
+  let current  = 0;
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    pills[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    pills[current].classList.add('active');
+    document.getElementById('btnPrev').disabled = current === 0;
+    document.getElementById('btnNext').disabled = current === slides.length - 1;
+    document.getElementById('slideInfo').textContent = `Slide ${current + 1} de ${slides.length}`;
+    const dots = Array.from({length: slides.length}, (_, i) => i === current ? '●' : '○').join('');
+    document.getElementById('slideProgress').textContent = dots;
+    window.scrollTo(0, 0);
+  }
+
+  function next() { if (current < slides.length - 1) goTo(current + 1); }
+  function prev() { if (current > 0) goTo(current - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next();
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   prev();
+  });
+
+  goTo(0);
+</script>
+</body>
+</html>
